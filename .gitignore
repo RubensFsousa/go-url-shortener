@@ -1,0 +1,18 @@
+# Ignorar configurações e arquivos temporários do VSCode
+.vscode/
+*.code-workspace
+
+# Ignorar executáveis gerados pelo código
+*.exe*
+*.out
+*.bin
+
+# Ignorar outros artefatos de build do Go
+*.log
+*.test
+*.o
+*.a
+
+vendor/
+
+bin/
