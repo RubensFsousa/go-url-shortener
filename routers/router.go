@@ -7,11 +7,12 @@ import (
 
 func InitRouters() {
 	router := gin.Default()
+	handler.InitializeHandler()
 
 	v1 := router.Group("/api/url")
 	{
 		v1.POST("/", handler.CoderUrlHandler)
-		v1.GET("/:shortUrl", handler.DecoderUrlHandler)
+		v1.GET("/:codedUrl", handler.DecoderUrlHandler)
 	}
 
 	router.Run()
