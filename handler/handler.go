@@ -43,6 +43,12 @@ func CoderUrlHandler(ctx *gin.Context) {
 		CodedUrl:   hashed,
 	}
 
+	if existsUrl := db.Where("decoded_url = ?", decodedUrl).First(&url); existsUrl != nil {
+		logger.Errorf("exist url with %v", decodedUrl)
+		sendError(ctx, http.StatusBadRequest, "url already shorted")
+		return
+	}
+
 	if err := db.Create(&url).Error; err != nil {
 		logger.Errorf("error registering url: %v", err)
 		sendError(ctx, http.StatusInternalServerError, "error registering url")
