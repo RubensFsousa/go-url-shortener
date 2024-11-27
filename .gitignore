@@ -6,6 +6,7 @@
 *.exe*
 *.out
 *.bin
+*.env
 
 # Ignorar outros artefatos de build do Go
 *.log

@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"os"
+
 	"github.com/RubensFsousa/go-url-shortener/handler"
 	"github.com/gin-gonic/gin"
 )
@@ -15,5 +17,5 @@ func InitRouters() {
 		v1.GET("/:codedUrl", handler.DecoderUrlHandler)
 	}
 
-	router.Run()
+	router.Run(os.Getenv("PORT"))
 }
