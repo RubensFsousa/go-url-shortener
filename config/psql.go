@@ -13,11 +13,7 @@ import (
 func InitPSQL() (*gorm.DB, error) {
 	logger := GetLogger("PSQL")
 
-	err := godotenv.Load()
-	if err != nil {
-		logger.Errorf("error to load env file: %v", err)
-		return nil, err
-	}
+	godotenv.Load()
 
 	dbHost := os.Getenv("DB_HOST")
 	dbUser := os.Getenv("DB_USER")

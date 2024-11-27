@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8070:9090"
+    environment:
+      PORT: 9090
+      DB_HOST: postgres
+      DB_USER: postgres
+      DB_PASS: admin
+      DB_NAME: shortener_db
+      DB_PORT: 5432
+    depends_on:
+      - postgres
+    restart: always
+    volumes:
+      - .:/app
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: shortener_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  pg_data:

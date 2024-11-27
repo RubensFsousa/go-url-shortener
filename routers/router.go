@@ -17,5 +17,7 @@ func InitRouters() {
 		v1.GET("/:codedUrl", handler.DecoderUrlHandler)
 	}
 
-	router.Run(os.Getenv("PORT"))
+	port := ":" + os.Getenv("PORT")
+
+	router.Run(port)
 }
