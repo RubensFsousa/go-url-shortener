@@ -17,8 +17,8 @@ func InitRouters() {
 
 	v1 := router.Group("/api/url")
 	{
-		v1.POST("/", handler.CoderUrlHandler)
-		v1.GET("/:codedUrl", handler.DecoderUrlHandler)
+		v1.POST("/codeUrl", handler.CoderUrlHandler)
+		v1.GET("/decodeUrl", handler.DecoderUrlHandler)
 	}
 
 	port := ":" + os.Getenv("PORT")

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"hash/crc32"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/RubensFsousa/go-url-shortener/config"
@@ -18,6 +17,13 @@ var (
 	db     *gorm.DB
 	logger *config.Logger
 )
+
+type CodedUrlRequest struct {
+	Url string `json:"url" binding:"required"`
+}
+type DecoderUrlRequest struct {
+	Hash string `json:"hash" binding:"required"`
+}
 
 func InitializeHandler() {
 	logger = config.GetLogger("handler")
@@ -34,26 +40,26 @@ func InitializeHandler() {
 // @Success         201         {string} string  "Shortened URL created successfully"
 // @Failure         400         {string} string  "Invalid parameter or URL already shortened"
 // @Failure         500         {string} string  "Internal error while processing the URL"
-// @Router          /url [post]
+// @Router          /url/codeUrl [post]
 func CoderUrlHandler(ctx *gin.Context) {
-	decodedUrl := ctx.Query("decodedUrl")
+	var request CodedUrlRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		logger.Errorf("error to bind request %v", err)
+		sendError(ctx, http.StatusBadRequest, "bind request error")
+	}
 
-	if strings.TrimSpace(decodedUrl) == "" {
-		sendError(ctx, http.StatusBadRequest, "decodedUrl parameter is required")
+	url := request.Url
+
+	if strings.TrimSpace(url) == "" {
+		sendError(ctx, http.StatusBadRequest, "url parameter is required")
 		return
 	}
 
-	decodedUrl, err := url.QueryUnescape(decodedUrl)
-	if err != nil {
-		sendError(ctx, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	hashed := urlEncode(decodedUrl)
+	hashed := urlEncode(url)
 
 	var existingUrl models.Url
-	if err := db.Where("decoded_url = ?", decodedUrl).First(&existingUrl).Error; err == nil {
-		logger.Warnf("URL already exists: %v", decodedUrl)
+	if err := db.Where("decoded_url = ?", url).First(&existingUrl).Error; err == nil {
+		logger.Warnf("URL already exists: %v", url)
 		sendError(ctx, http.StatusBadRequest, "URL already shortened")
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -63,7 +69,7 @@ func CoderUrlHandler(ctx *gin.Context) {
 	}
 
 	newUrl := models.Url{
-		DecodedUrl: decodedUrl,
+		DecodedUrl: url,
 		CodedUrl:   hashed,
 	}
 
@@ -97,17 +103,23 @@ func urlEncode(url string) string {
 // @Param           codedUrl  path      string  true  "Shortened URL to decode"
 // @Success         200       {string} string  "Original URL"
 // @Failure         400       {string} string  "Error finding the URL or URL not found"
-// @Router          /url/{codedUrl} [get]
+// @Router          /url/decodeUrl [get]
 func DecoderUrlHandler(ctx *gin.Context) {
-	codedUrl := ctx.Param("codedUrl")
+	var request DecoderUrlRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		logger.Errorf("error to bind request %v", err)
+		sendError(ctx, http.StatusBadRequest, "bind request error")
+	}
 
-	if codedUrl == "" {
-		sendError(ctx, http.StatusBadRequest, "codedUrl parameter is required")
+	hash := request.Hash
+
+	if hash == "" {
+		sendError(ctx, http.StatusBadRequest, "hash parameter is required")
 		return
 	}
 
 	url := models.Url{}
-	if err := db.Where("coded_url = ?", codedUrl).First(&url).Error; err != nil {
+	if err := db.Where("coded_url = ?", hash).First(&url).Error; err != nil {
 		logger.Errorf("error to find url: %v", err)
 		sendError(ctx, http.StatusBadRequest, "error url not find")
 		return
