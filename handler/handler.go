@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"hash/crc32"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/RubensFsousa/go-url-shortener/config"
 	"github.com/RubensFsousa/go-url-shortener/models"
@@ -22,10 +24,21 @@ func InitializeHandler() {
 	db = config.GetPSQL()
 }
 
+// CoderUrlHandler shortens a given URL.
+// @Summary         Shorten URL
+// @Description     Accepts an original URL as a query parameter and returns a shortened URL.
+// @Tags            URL
+// @Accept          json
+// @Produce         json
+// @Param           decodedUrl  query    string  true  "Original URL to be shortened"
+// @Success         201         {string} string  "Shortened URL created successfully"
+// @Failure         400         {string} string  "Invalid parameter or URL already shortened"
+// @Failure         500         {string} string  "Internal error while processing the URL"
+// @Router          /url [post]
 func CoderUrlHandler(ctx *gin.Context) {
 	decodedUrl := ctx.Query("decodedUrl")
 
-	if decodedUrl == "" {
+	if strings.TrimSpace(decodedUrl) == "" {
 		sendError(ctx, http.StatusBadRequest, "decodedUrl parameter is required")
 		return
 	}
@@ -38,18 +51,23 @@ func CoderUrlHandler(ctx *gin.Context) {
 
 	hashed := urlEncode(decodedUrl)
 
-	url := models.Url{
+	var existingUrl models.Url
+	if err := db.Where("decoded_url = ?", decodedUrl).First(&existingUrl).Error; err == nil {
+		logger.Warnf("URL already exists: %v", decodedUrl)
+		sendError(ctx, http.StatusBadRequest, "URL already shortened")
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Errorf("Database error during URL lookup: %v", err)
+		sendError(ctx, http.StatusInternalServerError, "Database error")
+		return
+	}
+
+	newUrl := models.Url{
 		DecodedUrl: decodedUrl,
 		CodedUrl:   hashed,
 	}
 
-	if existsUrl := db.Where("decoded_url = ?", decodedUrl).First(&url); existsUrl != nil {
-		logger.Errorf("exist url with %v", decodedUrl)
-		sendError(ctx, http.StatusBadRequest, "url already shorted")
-		return
-	}
-
-	if err := db.Create(&url).Error; err != nil {
+	if err := db.Create(&newUrl).Error; err != nil {
 		logger.Errorf("error registering url: %v", err)
 		sendError(ctx, http.StatusInternalServerError, "error registering url")
 		return
@@ -70,6 +88,16 @@ func urlEncode(url string) string {
 	return hash
 }
 
+// DecoderUrlHandler decodes a shortened URL back to its original form.
+// @Summary         Decode URL
+// @Description     Takes a shortened URL (path parameter) and returns the original URL.
+// @Tags            URL
+// @Accept          json
+// @Produce         json
+// @Param           codedUrl  path      string  true  "Shortened URL to decode"
+// @Success         200       {string} string  "Original URL"
+// @Failure         400       {string} string  "Error finding the URL or URL not found"
+// @Router          /url/{codedUrl} [get]
 func DecoderUrlHandler(ctx *gin.Context) {
 	codedUrl := ctx.Param("codedUrl")
 
