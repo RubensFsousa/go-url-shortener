@@ -8,7 +8,7 @@ RUN_CMD := ./$(BINARY_NAME).exe
 # Alvo padrão: roda o CompileDaemon
 .PHONY: run
 run:
-	CompileDaemon -build="$(BUILD_CMD)" -command="$(RUN_CMD)" -exclude "*.exe~"
+	CompileDaemon -build="$(BUILD_CMD)" -command="$(RUN_CMD)"
 
 # Compilar manualmente sem usar o CompileDaemon
 .PHONY: build
@@ -24,3 +24,8 @@ start:
 .PHONY: clean
 clean:
 	rm -f $(BINARY_NAME).exe $(BINARY_NAME).exe~
+
+# Gera a documentação Swagger
+.PHONY: swag
+swag:
+	swag init --output ./docs --parseDependency --parseInternal

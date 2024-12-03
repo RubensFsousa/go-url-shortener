@@ -20,7 +20,12 @@ func sendSuccess(ctx *gin.Context, code int, data interface{}) {
 	})
 }
 
+type SuccessResponse struct {
+	Code string      `json:"code" example:"201"`
+	Data interface{} `json:"data"`
+}
+
 type ErrorResponse struct {
-	Message   string `json:"message"`
-	ErrorCode string `json:"errorCode"`
+	ErrorCode string `json:"errorCode" example:"400"`
+	Message   string `json:"message" example:"error on create"`
 }

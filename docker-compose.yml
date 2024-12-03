@@ -13,6 +13,8 @@ services:
       DB_PASS: admin
       DB_NAME: shortener_db
       DB_PORT: 5432
+      MIN_HASH_SIZE: 8
+      HASH_SALT: 7bcff2aa
     depends_on:
       - postgres
     restart: always

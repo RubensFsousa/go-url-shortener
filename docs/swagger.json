@@ -8,7 +8,7 @@
     },
     "basePath": "/api",
     "paths": {
-        "/url": {
+        "/url/codeUrl": {
             "post": {
                 "description": "Accepts an original URL as a query parameter and returns a shortened URL.",
                 "consumes": [
@@ -23,38 +23,40 @@
                 "summary": "Shorten URL",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Original URL to be shortened",
-                        "name": "decodedUrl",
-                        "in": "query",
-                        "required": true
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CoderUrlRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "201": {
                         "description": "Shortened URL created successfully",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid parameter or URL already shortened",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal error while processing the URL",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/url/{codedUrl}": {
+        "/url/decodeUrl/{hash}": {
             "get": {
-                "description": "Takes a shortened URL (path parameter) and returns the original URL.",
+                "description": "Takes a shortened URL and returns the original URL.",
                 "consumes": [
                     "application/json"
                 ],
@@ -69,7 +71,7 @@
                     {
                         "type": "string",
                         "description": "Shortened URL to decode",
-                        "name": "codedUrl",
+                        "name": "hash",
                         "in": "path",
                         "required": true
                     }
@@ -78,16 +80,58 @@
                     "200": {
                         "description": "Original URL",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Error finding the URL or URL not found",
+                        "description": "Error URL not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error while searching the URL",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     }
                 }
+            }
+        }
+    },
+    "definitions": {
+        "handler.CoderUrlRequest": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string",
+                    "example": "400"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "error on create"
+                }
+            }
+        },
+        "handler.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "201"
+                },
+                "data": {}
             }
         }
     }

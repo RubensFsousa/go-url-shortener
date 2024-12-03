@@ -4,6 +4,8 @@ import (
 	"errors"
 	"hash/crc32"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/RubensFsousa/go-url-shortener/config"
@@ -18,9 +20,10 @@ var (
 	logger *config.Logger
 )
 
-type CodedUrlRequest struct {
+type CoderUrlRequest struct {
 	Url string `json:"url" binding:"required"`
 }
+
 type DecoderUrlRequest struct {
 	Hash string `json:"hash" binding:"required"`
 }
@@ -36,13 +39,13 @@ func InitializeHandler() {
 // @Tags            URL
 // @Accept          json
 // @Produce         json
-// @Param           decodedUrl  query    string  true  "Original URL to be shortened"
-// @Success         201         {string} string  "Shortened URL created successfully"
-// @Failure         400         {string} string  "Invalid parameter or URL already shortened"
-// @Failure         500         {string} string  "Internal error while processing the URL"
+// @Param           request body CoderUrlRequest true     "Request body"
+// @Success         201         {object} SuccessResponse  "Shortened URL created successfully"
+// @Failure         400         {object} ErrorResponse    "Invalid parameter or URL already shortened"
+// @Failure         500         {object} ErrorResponse    "Internal error while processing the URL"
 // @Router          /url/codeUrl [post]
 func CoderUrlHandler(ctx *gin.Context) {
-	var request CodedUrlRequest
+	var request CoderUrlRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		logger.Errorf("error to bind request %v", err)
 		sendError(ctx, http.StatusBadRequest, "bind request error")
@@ -55,7 +58,7 @@ func CoderUrlHandler(ctx *gin.Context) {
 		return
 	}
 
-	hashed := urlEncode(url)
+	hashed := urlEncode(url, ctx)
 
 	var existingUrl models.Url
 	if err := db.Where("decoded_url = ?", url).First(&existingUrl).Error; err == nil {
@@ -82,10 +85,16 @@ func CoderUrlHandler(ctx *gin.Context) {
 	sendSuccess(ctx, http.StatusCreated, hashed)
 }
 
-func urlEncode(url string) string {
+func urlEncode(url string, ctx *gin.Context) string {
 	hd := hashids.NewData()
-	hd.Salt = "7bcff2aa"
-	hd.MinLength = 8
+	hd.Salt = os.Getenv("HASH_SALT")
+	minHashSize, err := strconv.Atoi(os.Getenv("MIN_HASH_SIZE"))
+	if err != nil {
+		logger.Error("error to cast MIN_HASH_SIZE env to int")
+		sendError(ctx, http.StatusInternalServerError, "error on hashing")
+	}
+
+	hd.MinLength = minHashSize
 	h, _ := hashids.NewWithData(hd)
 
 	urlHash := int(crc32.ChecksumIEEE([]byte(url)))
@@ -96,24 +105,19 @@ func urlEncode(url string) string {
 
 // DecoderUrlHandler decodes a shortened URL back to its original form.
 // @Summary         Decode URL
-// @Description     Takes a shortened URL (path parameter) and returns the original URL.
+// @Description     Takes a shortened URL and returns the original URL.
 // @Tags            URL
 // @Accept          json
 // @Produce         json
-// @Param           codedUrl  path      string  true  "Shortened URL to decode"
-// @Success         200       {string} string  "Original URL"
-// @Failure         400       {string} string  "Error finding the URL or URL not found"
-// @Router          /url/decodeUrl [get]
+// @Param           hash         path      string  true  "Shortened URL to decode"
+// @Success         200         {object} SuccessResponse  "Original URL"
+// @Failure         400         {object} ErrorResponse    "Error URL not found"
+// @Failure         500         {object} ErrorResponse    "Internal error while searching the URL"
+// @Router          /url/decodeUrl/{hash} [get]
 func DecoderUrlHandler(ctx *gin.Context) {
-	var request DecoderUrlRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		logger.Errorf("error to bind request %v", err)
-		sendError(ctx, http.StatusBadRequest, "bind request error")
-	}
+	hash := ctx.Param("hash")
 
-	hash := request.Hash
-
-	if hash == "" {
+	if strings.TrimSpace(hash) == "" {
 		sendError(ctx, http.StatusBadRequest, "hash parameter is required")
 		return
 	}
